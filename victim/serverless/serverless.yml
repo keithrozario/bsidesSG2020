@@ -1,0 +1,172 @@
+service: ServerlessVictim
+
+plugins:
+  - serverless-iam-roles-per-function
+
+custom:
+  config_file: "../Terraform/terraform.tfvars.json"
+  db_name: ${file(${self:custom.config_file}):employee_table}
+  db_arn: ${ssm:/victim/${self:custom.db_name}/arn}
+  security_group: ${ssm:/victim/lambda_security_group/id}
+  private_subnet: ${ssm:/victim/private_subnet/id}
+  bucket_name: ${ssm:/victim/bucket/name}
+  bucket_arn: ${ssm:/victim/bucket/arn}
+
+package:
+  exclude:
+    - node_modules/**
+    - .serverless
+    - package.json
+    - package-lock.json
+
+provider:
+  name: aws
+  runtime: python3.8
+  region: ${file(${self:custom.config_file}):aws_region}
+  profile: ${file(${self:custom.config_file}):aws_profile}
+  memorySize: 256
+  timeout: 10
+  environment:
+    bucket_name: ${self:custom.bucket_name}
+    db_name: ${self:custom.db_name}
+  layers:
+    - arn:aws:lambda:ap-southeast-1:770693421928:layer:Klayers-python38-requests:9
+    - arn:aws:lambda:ap-southeast-1:908645878701:layer:pylayers-python38-defaultcryptography:1
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+      - ssm:GetParameter
+      - ssm:GetParameters
+      Resource:
+      - Fn::Join:
+        - ":"
+        - - "arn:aws:ssm"
+          - Ref: AWS::Region
+          - Ref: AWS::AccountId
+          - "parameter/production/variable/foo"
+    
+
+functions:
+
+  victim_api:
+    handler: list_bucket.main
+    layers:
+      - arn:aws:lambda:ap-southeast-1:770693421928:layer:Klayers-python38-requests:9
+    environment:
+      ATTACK_TYPE: "API"
+    iamRoleStatementsInherit: true
+    iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - s3:ListBucket
+      Resource: ${self:custom.bucket_arn}
+    - Effect: Allow
+      Action:
+        - s3:GetObject
+        - s3:PutObject
+      Resource: ${self:custom.bucket_arn}/*
+
+  victim_s3:
+    handler: list_bucket.main
+    memorySize: 1796
+    timeout: 20
+    environment:
+      ATTACK_TYPE: "S3"
+    iamRoleStatementsInherit: true
+    vpc:
+      securityGroupIds:
+        - ${self:custom.security_group}
+      subnetIds:
+        - ${self:custom.private_subnet}
+    iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - s3:ListBucket
+      Resource: ${self:custom.bucket_arn}
+    - Effect: Allow
+      Action:
+        - s3:GetObject
+        - s3:PutObject
+      Resource: ${self:custom.bucket_arn}/*
+    - Effect: "Allow"
+      Action:
+        - s3:PutObject
+        - s3:PutObjectAcl
+      Resource: "*"
+
+  victim_byoc:
+    handler: list_bucket.main
+    memorySize: 1796
+    timeout: 20
+    environment:
+      ATTACK_TYPE: "BYOC"
+    iamRoleStatementsInherit: true
+    vpc:
+      securityGroupIds:
+        - ${self:custom.security_group}
+      subnetIds:
+        - ${self:custom.private_subnet}
+    iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - s3:ListBucket
+      Resource: ${self:custom.bucket_arn}
+    - Effect: Allow
+      Action:
+        - s3:GetObject
+        - s3:PutObject
+      Resource: ${self:custom.bucket_arn}/*
+  
+  query_location:
+    handler: handler.query_location
+    environment:
+      ATTACK_TYPE: "BYOC_wCode"
+    iamRoleStatementsInherit: true
+    iamRoleStatementsName: getLocation1
+    iamRoleStatements:
+    - Effect: "Allow"        
+      Action:
+      - dynamodb:Query
+      Resource: ${self:custom.db_arn}/index/GSI-1
+
+  query_location_attribute_iam:
+    handler: handler.query_location
+    environment:
+      ATTACK_TYPE: "BYOC_wCode"
+    iamRoleStatementsInherit: true
+    iamRoleStatementsName: getLocation2
+    iamRoleStatements:
+    - Effect: "Allow"        
+      Action:
+      - dynamodb:Query       
+      Condition:
+        ForAllValues:StringEquals:
+          dynamodb:Attributes:
+            - "sk"
+            - "pk"
+            - "EmployeeName"
+            - "colA"
+        StringEquals:
+          dynamodb:Select: "SPECIFIC_ATTRIBUTES"
+      Resource: ${self:custom.db_arn}/index/GSI-1
+
+  query_location_leading_key:
+    handler: handler.query_location
+    environment:
+      ATTACK_TYPE: "BYOC_wCode"
+    iamRoleStatementsInherit: true
+    iamRoleStatementsName: getLocation3
+    iamRoleStatements:
+    - Effect: "Allow"        
+      Action:
+      - dynamodb:Query       
+      Condition:
+        ForAllValues:StringLike:
+          dynamodb:LeadingKeys:
+            - "LOC#*"
+      Resource: ${self:custom.db_arn}/index/GSI-1
+    
+
+
+  
+  

@@ -1,0 +1,32 @@
+{
+    "records":
+    [
+        {
+            "pk": "HR-EMPLOYEE1",
+            "sk": "John Smith",
+            "colA": "Principal Account Manager",
+            "startDate": "2020-06-30"
+        },
+        {
+            "pk": "HR-EMPLOYEE1",
+            "sk": "Quota-2017-01",
+            "colA": "5000",
+            "EmployeeName": "John Smith"
+        },
+        {
+            "pk": "HR-EMPLOYEE1",
+            "sk": "HR-CONFIDENTIAL",
+            "colA": "2005-11-08",
+            "EmployeeName": "John Smith",
+            "Salary": 100000,
+            "Bank Account": 1234567,
+            "Mothers Maiden Name": "Martha"
+        },
+        {
+            "pk": "HR-EMPLOYEE1",
+            "sk": "WA | SEATTLE",
+            "colA": "B01|f07|A27|R05",
+            "EmployeeName": "John Smith"
+        }
+    ]
+}

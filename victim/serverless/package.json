@@ -1,0 +1,14 @@
+{
+  "name": "victim_serverless",
+  "version": "1.0.0",
+  "description": "Victim's Serverless Functions",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Keith Rozario",
+  "license": "ISC",
+  "devDependencies": {
+    "serverless-iam-roles-per-function": "^2.0.2"
+  }
+}
